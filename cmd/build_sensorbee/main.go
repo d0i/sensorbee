@@ -47,6 +47,10 @@ func main() {
 			Name:  "only-generate-source",
 			Usage: "only generating a main source file and not building a binary",
 		},
+		cli.BoolFlag{
+			Name: "verbose",
+			Usage: "redundunt messages",
+		},
 	}
 	app.Action = func(c *cli.Context) error {
 		if err := action(c); err != nil {
@@ -72,13 +76,19 @@ func action(c *cli.Context) (retErr error) {
 		if err != nil {
 			return err
 		}
+		fmt.Printf("config loaded.\n")
 		if err := downloadPlugins(c, config); err != nil {
 			return err
 		}
 		if err := create(c, config); err != nil {
 			return err
 		}
-		return build(c, config)
+		fmt.Printf("project creation succeeded.\n")
+		if err := build(c, config); err != nil {
+			return err
+		}
+		fmt.Printf("build finished.\n")
+		return nil
 	}()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
@@ -116,6 +126,7 @@ func downloadPlugins(c *cli.Context, config *Config) error {
 	}
 
 	// update main SensorBee
+	fmt.Printf("updating sensorbee packages...")
 	cmd := exec.Command("go", "get", "-u", "gopkg.in/sensorbee/sensorbee.v0/...")
 	buf := bytes.NewBuffer(nil)
 	cmd.Stdout = buf
@@ -125,6 +136,7 @@ func downloadPlugins(c *cli.Context, config *Config) error {
 		return fmt.Errorf("cannot get SensorBee core files: %v \n\n%v", err, string(b))
 	}
 	// download plugins
+	fmt.Printf("downloading plugins...")
 	for _, p := range config.PluginPaths {
 		cmd := exec.Command("go", "get", "-u", p)
 		buf := bytes.NewBuffer(nil)
@@ -134,6 +146,7 @@ func downloadPlugins(c *cli.Context, config *Config) error {
 			b, _ := ioutil.ReadAll(buf)
 			return fmt.Errorf("cannot get a plugin '%v': %v \n\n%v", p, err, string(b))
 		}
+		fmt.Printf("%s successfully downloaded.", p)
 	}
 	return nil
 }
